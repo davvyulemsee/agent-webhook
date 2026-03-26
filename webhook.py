@@ -232,7 +232,11 @@ app = graph.compile()
 
 # ================== END OF AGENT CODE ==================
 
-app = FastAPI(title="Amani AI WhatsApp Webhook")
+langgraph_app = FastAPI(title="Amani AI WhatsApp Webhook")
+
+@app.get("/")
+async def health():
+    return {"status": "healthy", "message": "Amani WhatsApp webhook is running"}
 
 @app.post("/whatsapp")
 async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
