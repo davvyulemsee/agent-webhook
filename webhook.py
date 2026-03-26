@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 # Import your compiled LangGraph app from the main file
 # Make sure the filename matches exactly
-from ..virtual_assistant.virtual_assistant import app as langgraph_app
+from virtual_assistant import app as langgraph_app
 
 load_dotenv()
 
