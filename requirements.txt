@@ -1,8 +1,25 @@
-fastapi
-uvicorn
-twilio
-python-dotenv
-langchain-core
-langchain-groq
-langgraph
-pydantic
+# requirements.txt
+
+# Core LangChain + LangGraph ecosystem
+langchain-core>=0.3.0
+langchain-groq>=0.2.0
+langgraph>=0.2.14
+
+# Chainlit for the UI
+chainlit>=1.1.300
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# HTTP requests (for your search_products tool)
+requests>=2.31.0
+
+# Type hints & Pydantic (used in tools)
+pydantic>=2.5.0
+
+# Async support (already in Python, but good to be explicit)
+asyncio>=3.4.3  # usually not needed, but safe
+
+elevenlabs
+
+twilio>=9.0.0
