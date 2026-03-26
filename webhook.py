@@ -253,7 +253,7 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
 
     resp = MessagingResponse()
     resp.message(reply)
-    return str(resp)
+    return Response(content=str(resp), media_type="application/xml")
 
 
 if __name__ == "__main__":
