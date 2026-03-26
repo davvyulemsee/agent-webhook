@@ -4,27 +4,44 @@ from langchain_core.messages import HumanMessage
 import os
 from dotenv import load_dotenv
 
-# Import your compiled LangGraph app
-# Option A: If you want to keep it simple for now, create a minimal version
-# Option B: Copy your full agent code here (recommended for first test)
+# Import your compiled LangGraph app from the main file
+# Make sure the filename matches exactly
+from ..virtual_assistant.virtual_assistant import app as langgraph_app
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="Amani AI WhatsApp Webhook")
 
 @app.post("/whatsapp")
 async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
+    """
+    Receives messages from Twilio WhatsApp and forwards them to your LangGraph agent.
+    """
+    # Create a unique thread ID for each WhatsApp user
     thread_id = f"wa_{From.replace('whatsapp:', '').replace('+', '')}"
 
-    # For now, we'll use a simple echo to test the connection
-    # Later we'll connect your full LangGraph agent
-    reply = f"Received: {Body}\n\nI'm Amani AI. I'm still learning, but I'm here to help with banking questions!"
+    config = {"configurable": {"thread_id": thread_id}}
 
+    try:
+        # Run your LangGraph agent
+        inputs = {"messages": [HumanMessage(content=Body)]}
+        output = langgraph_app.invoke(inputs, config)
+
+        # Get the last message from the agent
+        reply = output["messages"][-1].content if output.get("messages") else \
+                "Sorry, I couldn't process that. Please try again."
+
+    except Exception as e:
+        reply = f"Sorry, something went wrong: {str(e)[:100]}"
+
+    # Send reply back to WhatsApp via Twilio
     resp = MessagingResponse()
     resp.message(reply)
 
     return str(resp)
 
+
+# For local testing
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
