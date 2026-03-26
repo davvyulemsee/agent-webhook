@@ -227,12 +227,12 @@ graph.add_edge("tools", "agent_node")
 memory = MemorySaver()
 
 # app = graph.compile(checkpointer=memory)
-app = graph.compile()
+langgraph_app = graph.compile()
 
 
 # ================== END OF AGENT CODE ==================
 
-langgraph_app = FastAPI(title="Amani AI WhatsApp Webhook")
+app = FastAPI(title="Amani AI WhatsApp Webhook")
 
 @app.get("/")
 async def health():
