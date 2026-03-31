@@ -4,7 +4,7 @@ import streamlit as st
 from sqlalchemy import create_engine
 from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
-import datetime
+from datetime import datetime
 import time
 
 st.markdown(
