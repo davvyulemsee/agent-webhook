@@ -2,6 +2,11 @@ import os
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
+from streamlit_autorefresh import st_autorefresh
+import plotly.express as px
+
+
+st_autorefresh(interval=5000, key="refresh")
 
 # Get DATABASE_URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -15,18 +20,47 @@ engine = create_engine(DATABASE_URL)
 st.title("Amani AI Admin Dashboard")
 
 # Conversations
-st.header("Conversations")
 convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
-st.dataframe(convos)
-
-# Tickets
-st.header("Escalation Tickets")
 tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
-st.dataframe(tickets)
 
-# Analytics
-st.header("Analytics")
-st.metric("Total Conversations", len(convos))
-st.metric("Escalations", len(tickets))
-rate = round((len(tickets) / len(convos)) * 100, 2) if len(convos) else 0
-st.metric("Escalation Rate (%)", rate)
+
+# Layout: 3 panels (25%, 50%, 25%)
+col1, col2, col3 = st.columns([1, 2, 1])
+
+# Left Panel: Clients
+with col1:
+    st.subheader("Clients")
+    clients = convos["customer_phone"].unique()
+    selected_client = st.selectbox("Select client", clients)
+
+# Middle Panel: Chat History
+with col2:
+    st.subheader("Chat History")
+    if selected_client:
+        client_chats = convos[convos["customer_phone"] == selected_client]
+        for _, row in client_chats.iterrows():
+            role = "🟢 User" if row["role"] == "user" else "🤖 AI"
+            st.write(f"[{row['timestamp']}] {role}: {row['message']}")
+
+
+# Right Panel: Analytics + Tickets
+with col3:
+    st.subheader("Analytics")
+    st.metric("Total Conversations", len(convos))
+    st.metric("Escalations", len(tickets))
+    rate = round((len(tickets) / len(convos)) * 100, 2) if len(convos) else 0
+    st.metric("Escalation Rate (%)", rate)
+
+    # Graphs
+    st.write("### Conversations per Client")
+    fig1 = px.bar(convos.groupby("customer_phone").size().reset_index(name="count"),
+                  x="customer_phone", y="count", title="Conversations per Client")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    st.write("### Ticket Status Distribution")
+    if "status" in tickets.columns:
+        fig2 = px.pie(tickets, names="status", title="Ticket Status Distribution")
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.write("### Tickets")
+    st.dataframe(tickets)
