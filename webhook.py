@@ -240,6 +240,12 @@ app = FastAPI(title="Amani AI WhatsApp Webhook")
 async def health():
     return {"status": "healthy", "message": "Amani WhatsApp webhook is running"}
 
+@app.get("/test-db")
+async def test_db():
+    cursor.execute("SELECT NOW()")
+    result = cursor.fetchone()
+    return {"db_time": result["now"]}
+
 @app.post("/whatsapp")
 async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     thread_id = f"wa_{From.replace('whatsapp:', '').replace('+', '')}"
