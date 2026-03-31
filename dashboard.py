@@ -4,6 +4,8 @@ import streamlit as st
 from sqlalchemy import create_engine
 from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
+import datetime
+import time
 
 st.set_page_config(
     page_title="Amani AI Dashboard",
@@ -25,9 +27,18 @@ engine = create_engine(DATABASE_URL)
 
 st.title("Amani AI Admin Dashboard")
 
+
+placeholder = st.empty()
+while True:
+    with placeholder.container():
+        convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
+        tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
+        # render your panels here
+    time.sleep(5)  # refresh every 5 seconds
+
 # Conversations
-convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
-tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
+# convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
+# tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
 
 
 # Layout: 3 panels (25%, 50%, 25%)
@@ -45,6 +56,9 @@ with col2:
     if selected_client:
         client_chats = convos[convos["customer_phone"] == selected_client]
         for _, row in client_chats.iterrows():
+            # Convert timestamp to HH:MM format
+            time_str = datetime.strptime(str(row["timestamp"]), "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+
             role = "🟢 User" if row["role"] == "user" else "🤖 AI"
             st.write(f"[{row['timestamp']}] {role}: {row['message']}")
 
