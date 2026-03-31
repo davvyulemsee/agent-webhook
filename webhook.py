@@ -263,7 +263,7 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
         # Log user message
     customer_phone = From.replace("whatsapp:", "").replace("+", "")
 
-    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (?, ?, ?)",
+    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
                    (customer_phone, Body, "user"))
     conn.commit()
 
@@ -275,13 +275,13 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
         reply = "Sorry, something went wrong. Please try again later."
 
     # Log agent reply
-    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (?, ?, ?)",
+    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
                    (customer_phone, reply, "agent"))
     conn.commit()
 
     # Example escalation
     if "urgent" in Body.lower():
-        cursor.execute("INSERT INTO tickets (reason, urgency, customer_phone) VALUES (?, ?, ?)",
+        cursor.execute("INSERT INTO tickets (reason, urgency, customer_phone) VALUES (%s, %s, %s)",
                        ("Customer flagged urgent", "high", customer_phone))
         conn.commit()
 
