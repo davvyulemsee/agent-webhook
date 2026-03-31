@@ -7,27 +7,6 @@ import plotly.express as px
 import datetime
 import time
 
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background: linear-gradient(135deg, #0A0A0A, #1A1A1A);
-        color: #00FF00;
-    }
-    .stMetric {
-        color: #00FF00;
-    }
-    .stButton>button {
-        background-color: #0A0A0A;
-        color: #00FF00;
-        border: 1px solid #00FF00;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# a comment
 
 st.set_page_config(
     page_title="Amani AI Dashboard",
