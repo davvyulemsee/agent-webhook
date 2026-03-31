@@ -70,7 +70,7 @@ with col2:
             # Convert timestamp to HH:MM format
             time_str = datetime.strptime(str(row["timestamp"]), "%Y-%m-%d %H:%M:%S.%f").strftime("%H:%M")
             role = "🟢 User" if row["role"] == "user" else "🤖 AI"
-            st.write(f"[{row['time_str']}] {role}: {row['message']}")
+            st.write(f"[{time_str}] {role}: {row['message']}")
 
 
 # Right Panel: Analytics + Tickets
