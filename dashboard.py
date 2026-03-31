@@ -5,6 +5,12 @@ from sqlalchemy import create_engine
 from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
 
+st.set_page_config(
+    page_title="Amani AI Dashboard",
+    layout="wide",   # 🔑 makes the app use full browser width
+    initial_sidebar_state="collapsed"
+)
+
 
 st_autorefresh(interval=5000, key="refresh")
 
