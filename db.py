@@ -23,7 +23,7 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS conversations (
 
 # Tickets table
 cursor.execute("""CREATE TABLE IF NOT EXISTS tickets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY ,
     reason TEXT,
     urgency TEXT,
     customer_phone TEXT,
