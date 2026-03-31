@@ -7,6 +7,25 @@ import plotly.express as px
 import datetime
 import time
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #0A0A0A, #1A1A1A);
+        color: #00FF00;
+    }
+    .stMetric {
+        color: #00FF00;
+    }
+    .stButton>button {
+        background-color: #0A0A0A;
+        color: #00FF00;
+        border: 1px solid #00FF00;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 st.set_page_config(
     page_title="Amani AI Dashboard",
@@ -29,17 +48,9 @@ engine = create_engine(DATABASE_URL)
 st.title("Amani AI Admin Dashboard")
 
 
-placeholder = st.empty()
-while True:
-    with placeholder.container():
-        convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
-        tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
-        # render your panels here
-    time.sleep(5)  # refresh every 5 seconds
-
 # Conversations
-# convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
-# tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
+convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
+tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
 
 
 # Layout: 3 panels (25%, 50%, 25%)
