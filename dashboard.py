@@ -12,7 +12,6 @@ st.markdown(
     <style>
     .stApp {
         background: linear-gradient(135deg, #0A0A0A, #1A1A1A);
-        color: #00FF00;
     }
     .stMetric {
         color: #00FF00;
