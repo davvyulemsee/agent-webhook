@@ -69,7 +69,7 @@ with col2:
         client_chats = convos[convos["customer_phone"] == selected_client]
         for _, row in client_chats.iterrows():
             # Convert timestamp to HH:MM format
-            time_str = datetime.strptime(str(row["timestamp"]), "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
+            time_str = pd.to_datetime(row["timestamp"]).strftime("%H:%M")
 
             role = "🟢 User" if row["role"] == "user" else "🤖 AI"
             st.write(f"[{row['timestamp']}] {role}: {row['message']}")
