@@ -23,3 +23,10 @@ asyncio>=3.4.3  # usually not needed, but safe
 elevenlabs
 
 twilio>=9.0.0
+
+fastapi
+uvicorn
+
+psycopg2-binary
+streamlit
+requests

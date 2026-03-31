@@ -21,6 +21,7 @@ import chainlit as cl
 from pydantic import Field
 import time
 import requests
+from db import conn, cursor
 from pathlib import Path
 
 
@@ -251,6 +252,32 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
         reply = output["messages"][-1].content if output.get("messages") else "Sorry, I couldn't process that. Please try again."
     except Exception as e:
         reply = "Sorry, something went wrong. Please try again later."
+
+    # Message logging
+        # Log user message
+    customer_phone = From.replace("whatsapp:", "").replace("+", "")
+
+    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (?, ?, ?)",
+                   (customer_phone, Body, "user"))
+    conn.commit()
+
+    try:
+        inputs = {"messages": [HumanMessage(content=Body)]}
+        output = langgraph_app.invoke(inputs, config)
+        reply = output["messages"][-1].content if output.get("messages") else "Sorry, I couldn't process that."
+    except Exception:
+        reply = "Sorry, something went wrong. Please try again later."
+
+    # Log agent reply
+    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (?, ?, ?)",
+                   (customer_phone, reply, "agent"))
+    conn.commit()
+
+    # Example escalation
+    if "urgent" in Body.lower():
+        cursor.execute("INSERT INTO tickets (reason, urgency, customer_phone) VALUES (?, ?, ?)",
+                       ("Customer flagged urgent", "high", customer_phone))
+        conn.commit()
 
     resp = MessagingResponse()
     resp.message(reply)
