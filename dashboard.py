@@ -114,7 +114,7 @@ with col2:
             # Log reply in DB
             with engine.connect() as conn:
                 conn.execute(
-                    text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (%s, %s, %s, NOW())"),
+                    text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (:phone, :role, :message, NOW())"),
                     {"phone": selected_client, "role":"human","message": human_reply}
                 )
                 conn.commit()
