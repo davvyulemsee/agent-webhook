@@ -79,8 +79,8 @@ with col2:
         for _, row in client_chats.iterrows():
             # Convert timestamp to HH:MM format
             time_str = datetime.strptime(str(row["timestamp"]), "%Y-%m-%d %H:%M:%S.%f").strftime("%H:%M")
-            # role = "🟢 User" if row["role"] == "user" else "🤖 AI"
-            # st.write(f"[{time_str}] {role}: {row['message']}")
+            role = "🟢 User" if row["role"] == "user" else "🤖 AI"
+            st.write(f"[{time_str}] {role}: {row['message']}")
             if row["role"] == "user":
                 st.markdown(
                     f"<div style='text-align:left; background:#1A1A1A; color:#00FF00; "
