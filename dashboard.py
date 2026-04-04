@@ -95,19 +95,19 @@ with col2:
                     unsafe_allow_html=True
                 )
                 # 🧑 Human-in-the-loop reply box
-            st.write("---")
-            human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
-            if st.button("Send", key=f"send_button_{selected_client}"):
-                # Log reply in DB
-                with engine.connect() as conn:
-                    conn.execute(
-                        "INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (%s, %s, %s, NOW())",
-                        (selected_client, "human", human_reply)
-                    )
-                    conn.commit()
+        st.write("---")
+        human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
+        if st.button("Send", key=f"send_button_{selected_client}"):
+            # Log reply in DB
+            with engine.connect() as conn:
+                conn.execute(
+                    "INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (%s, %s, %s, NOW())",
+                    (selected_client, "human", human_reply)
+                )
+                conn.commit()
 
-                # TODO: integrate with Twilio/WhatsApp/SMS API here
-                st.success("Message sent to customer.")
+            # TODO: integrate with Twilio/WhatsApp/SMS API here
+            st.success("Message sent to customer.")
 
 # Right Panel: Analytics + Tickets
 with col3:
