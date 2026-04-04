@@ -96,8 +96,8 @@ with col2:
                 )
                 # 🧑 Human-in-the-loop reply box
             st.write("---")
-            human_reply = st.text_area("Send a message to customer:", key="human_reply")
-            if st.button("Send"):
+            human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
+            if st.button("Send", key=f"send_button_{selected_client}"):
                 # Log reply in DB
                 with engine.connect() as conn:
                     conn.execute(
