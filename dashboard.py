@@ -99,13 +99,13 @@ with col2:
                 )
 
             else:
-            st.markdown(
-                f"<div style='text-align:right; background:#0A0A0A; color:#FFFFFF; "
-                f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
-                f"max-width:70%;'>"
-                f"<b>AI [{time_str}]</b><br>{row['message']}</div>",
-                unsafe_allow_html=True
-            )
+                st.markdown(
+                    f"<div style='text-align:right; background:#0A0A0A; color:#FFFFFF; "
+                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
+                    f"max-width:70%;'>"
+                    f"<b>AI [{time_str}]</b><br>{row['message']}</div>",
+                    unsafe_allow_html=True
+                )
                 # 🧑 Human-in-the-loop reply box
         st.write("---")
         human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
