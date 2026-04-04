@@ -83,7 +83,7 @@ with col2:
             # st.write(f"[{time_str}] {role}: {row['message']}")
             if row["role"] == "user":
                 st.markdown(
-                    f"<div style='text-align:left; background:#1A1A1A; color:#00FF00; "
+                    f"<div style='text-align:left; background:#1A1A1A; color:#FFFFFF; "
                     f"padding:8px; border-radius:8px; margin:5px; max-width:70%;'>"
                     f"<b>User [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
@@ -91,7 +91,7 @@ with col2:
 
             elif row["role"] == "human":
                 st.markdown(
-                    f"<div style='text-align:right; background:#001F3F; color:#00FFFF; "
+                    f"<div style='text-align:left; background:#001F3F; color:#00FFFF; "
                     f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
                     f"max-width:70%;'>"
                     f"<b>Human [{time_str}]</b><br>{row['message']}</div>",
@@ -100,7 +100,7 @@ with col2:
 
             else:
                 st.markdown(
-                    f"<div style='text-align:right; background:#0A0A0A; color:#FFFFFF; "
+                    f"<div style='text-align:left; background:#0A0A0A; color:#FFFFFF; "
                     f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
                     f"max-width:70%;'>"
                     f"<b>AI [{time_str}]</b><br>{row['message']}</div>",
