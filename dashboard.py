@@ -137,12 +137,12 @@ with col3:
     st.write("### Conversations per Client")
     fig1 = px.bar(convos.groupby("customer_phone").size().reset_index(name="count"),
                   x="customer_phone", y="count", title="Conversations per Client")
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, width="stretch")
 
     st.write("### Ticket Status Distribution")
     if "status" in tickets.columns:
         fig2 = px.pie(tickets, names="status", title="Ticket Status Distribution")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
     st.write("### Tickets")
     st.dataframe(tickets)
