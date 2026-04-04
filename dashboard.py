@@ -63,7 +63,7 @@ tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
 
 
 # Layout: 3 panels (25%, 50%, 25%)
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([1, 5, 2])
 
 # Left Panel: Clients
 with col1:
