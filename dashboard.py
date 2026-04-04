@@ -6,6 +6,16 @@ from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
 from datetime import datetime
 import time
+from twilio.rest import Client
+
+# Load credentials from environment variables
+account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+
+# Initialize Twilio client
+twilio_client = Client(account_sid, auth_token)
+
 
 st.markdown(
     """
@@ -107,6 +117,12 @@ with col2:
                 conn.commit()
 
             # TODO: integrate with Twilio/WhatsApp/SMS API here
+            twilio_client.messages.create(
+                from_=twilio_number,  # your Twilio WhatsApp number
+                to=f"whatsapp:{selected_client}",  # customer's WhatsApp number
+                body=human_reply  # message text
+            )
+
             st.success("Message sent to customer.")
 
 # Right Panel: Analytics + Tickets
