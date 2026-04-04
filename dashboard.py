@@ -7,6 +7,7 @@ import plotly.express as px
 from datetime import datetime
 import time
 from twilio.rest import Client
+from sqlalchemy import text
 
 # Load credentials from environment variables
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
@@ -113,8 +114,8 @@ with col2:
             # Log reply in DB
             with engine.connect() as conn:
                 conn.execute(
-                    "INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (%s, %s, %s, NOW())",
-                    (selected_client, "human", human_reply)
+                    text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (%s, %s, %s, NOW())"),
+                    {"phone": selected_client, "role":"human","message": human_reply}
                 )
                 conn.commit()
 
