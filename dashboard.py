@@ -14,6 +14,7 @@ import requests
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+API_BASE = os.getenv("WEBHOOK_URL", "http://localhost:8000")
 
 # Initialize Twilio client
 twilio_client = Client(account_sid, auth_token)
