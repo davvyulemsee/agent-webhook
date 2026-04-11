@@ -136,7 +136,7 @@ def check_loan_status(
 
 
 
-tools_list = [check_account_balance, report_transaction_dispute, check_loan_status, escalate_to_human, ]
+tools_list = [check_account_balance, report_transaction_dispute, check_loan_status, escalate_to_human, search_products]
 
 
 
@@ -229,7 +229,7 @@ graph.add_edge("tools", "agent_node")
 memory = MemorySaver()
 
 # app = graph.compile(checkpointer=memory)
-langgraph_app = graph.compile()
+langgraph_app = graph.compile(checkpointer=memory)
 
 
 # ================== END OF AGENT CODE ==================
@@ -252,12 +252,6 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
 
     config = {"configurable": {"thread_id": thread_id}}
 
-    try:
-        inputs = {"messages": [HumanMessage(content=Body)]}
-        output = langgraph_app.invoke(inputs, config)
-        reply = output["messages"][-1].content if output.get("messages") else "Sorry, I couldn't process that. Please try again."
-    except Exception as e:
-        reply = "Sorry, something went wrong. Please try again later."
 
     # Message logging
         # Log user message
