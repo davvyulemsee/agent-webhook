@@ -276,18 +276,31 @@ async def test_db():
 @app.post("/whatsapp")
 async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     thread_id = f"wa_{From.replace('whatsapp:', '').replace('+', '')}"
-
     config = {"configurable": {"thread_id": thread_id}}
-
-
-    # Message logging
-        # Log user message
     customer_phone = From.replace("whatsapp:", "").replace("+", "")
 
-    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
-                   (customer_phone, Body, "user"))
+    # Log user message
+    cursor.execute(
+        "INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
+        (customer_phone, Body, "user")
+    )
     conn.commit()
 
+    # Check if human has taken over this conversation
+    cursor.execute(
+        "SELECT handoff_active FROM conversations WHERE customer_phone = %s "
+        "ORDER BY timestamp DESC LIMIT 1",
+        (customer_phone,)
+    )
+    row = cursor.fetchone()
+    handoff_active = row["handoff_active"] if row else False
+
+    if handoff_active:
+        # Human is handling it — just acknowledge silently, don't invoke AI
+        resp = MessagingResponse()
+        return Response(content=str(resp), media_type="application/xml")
+
+    # Normal AI flow
     try:
         inputs = {"messages": [HumanMessage(content=Body)]}
         output = langgraph_app.invoke(inputs, config)
@@ -295,20 +308,24 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
     except Exception:
         reply = "Sorry, something went wrong. Please try again later."
 
-    # Log agent reply
-    cursor.execute("INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
-                   (customer_phone, reply, "agent"))
+    cursor.execute(
+        "INSERT INTO conversations (customer_phone, message, role) VALUES (%s, %s, %s)",
+        (customer_phone, reply, "agent")
+    )
     conn.commit()
-
-    # Example escalation
-    if "urgent" in Body.lower():
-        cursor.execute("INSERT INTO tickets (reason, urgency, customer_phone) VALUES (%s, %s, %s)",
-                       ("Customer flagged urgent", "high", customer_phone))
-        conn.commit()
 
     resp = MessagingResponse()
     resp.message(reply)
     return Response(content=str(resp), media_type="application/xml")
+
+@app.post("/handoff/{phone}")
+async def set_handoff(phone: str, active: bool):
+    cursor.execute(
+        "UPDATE conversations SET handoff_active = %s WHERE customer_phone = %s",
+        (active, phone)
+    )
+    conn.commit()
+    return {"status": "ok", "handoff_active": active}
 
 
 if __name__ == "__main__":

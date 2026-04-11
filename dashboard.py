@@ -110,6 +110,17 @@ with col2:
                 )
                 # 🧑 Human-in-the-loop reply box
         st.write("---")
+
+        col_take, col_release = st.columns(2)
+        with col_take:
+            if st.button("Take over", key=f"take_{selected_client}"):
+                requests.post(f"{API_BASE}/handoff/{selected_client}?active=true")
+                st.success("You are now handling this conversation.")
+        with col_release:
+            if st.button("Release to AI", key=f"release_{selected_client}"):
+                requests.post(f"{API_BASE}/handoff/{selected_client}?active=false")
+                st.success("AI has resumed.")
+
         human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
         if st.button("Send", key=f"send_button_{selected_client}"):
             # Log reply in DB
