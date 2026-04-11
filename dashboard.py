@@ -153,6 +153,24 @@ with col2:
 
 # Right Panel: Analytics + Tickets
 with col3:
+    st.write("### Knowledge base")
+    uploaded_file = st.file_uploader(
+        "Upload a document (PDF or TXT)",
+        type=["pdf", "txt"]
+    )
+    if uploaded_file:
+        if uploaded_file.type == "application/pdf":
+            import PyPDF2, io
+
+            reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+            text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+        else:
+            text = uploaded_file.read().decode("utf-8")
+
+        from rag import ingest_document
+
+        n = ingest_document(uploaded_file.name, text)
+        st.success(f"Ingested {n} chunks from {uploaded_file.name}")
     st.subheader("Analytics")
     st.write("### Pending appointments")
     appts = pd.read_sql(

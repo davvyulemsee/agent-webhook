@@ -43,3 +43,7 @@ apscheduler
 
 anthropic
 
+sentence-transformers
+pgvector
+pypdf2
+python-docx

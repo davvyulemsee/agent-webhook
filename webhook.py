@@ -29,6 +29,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from anthropic import Anthropic
 from datetime import datetime, timedelta
 
+from rag import search_knowledge_base
+
+
 
 
 from dotenv import load_dotenv
@@ -119,6 +122,17 @@ def book_appointment(
         f"Perfect, {customer_name}! I've logged your request for a {appointment_type} "
         f"on {preferred_date} around {preferred_time}. Our team will confirm shortly via WhatsApp."
     )
+
+
+@tool
+def search_firm_knowledge(
+    query: str = Field(..., description="What the client is asking about — services, pricing, process, projects")
+) -> str:
+    """Search the architecture firm's knowledge base for relevant information."""
+    context = search_knowledge_base(query)
+    if not context:
+        return "No specific information found. Use your general knowledge to assist."
+    return f"Here is relevant information from our firm:\n\n{context}"
 
 @tool
 def search_products(
