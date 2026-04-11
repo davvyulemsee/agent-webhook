@@ -67,6 +67,30 @@ cursor.execute("""
     )
 """)
 
+# Enable pgvector extension
+cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
+# Knowledge base table
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS knowledge_base (
+        id SERIAL PRIMARY KEY,
+        filename TEXT,
+        chunk_index INTEGER,
+        content TEXT,
+        embedding vector(384),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+# Vector similarity index
+cursor.execute("""
+    CREATE INDEX IF NOT EXISTS knowledge_base_embedding_idx 
+    ON knowledge_base USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100)
+""")
+
+conn.commit()
+
 conn.commit()
 
 
