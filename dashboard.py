@@ -9,21 +9,23 @@ import time
 from twilio.rest import Client
 from sqlalchemy import text
 import requests
+st.set_page_config(
+    page_title="Amani AI Dashboard",
+    layout="wide",   # 🔑 makes the app use full browser width
+    initial_sidebar_state="collapsed"
+)
 
 # Load credentials from environment variables
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
 API_BASE = os.getenv("WEBHOOK_URL", "http://localhost:8000")
+st.sidebar.write(f"API: {API_BASE}")
 
 # Initialize Twilio client
 twilio_client = Client(account_sid, auth_token)
 
-st.set_page_config(
-    page_title="Amani AI Dashboard",
-    layout="wide",   # 🔑 makes the app use full browser width
-    initial_sidebar_state="collapsed"
-)
+
 
 st.markdown(
     """
