@@ -384,7 +384,8 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
                 SystemMessage(content=f"The customer's phone number is {customer_phone}."),
                 HumanMessage(content=Body)
             ]
-        }        output = langgraph_app.invoke(inputs, config)
+        }
+        output = langgraph_app.invoke(inputs, config)
         reply = output["messages"][-1].content if output.get("messages") else "Sorry, I couldn't process that."
     except Exception:
         reply = "Sorry, something went wrong. Please try again later."
