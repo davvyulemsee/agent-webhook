@@ -40,3 +40,5 @@ streamlit_autorefresh
 datetime
 
 apscheduler
+
+anthropic
