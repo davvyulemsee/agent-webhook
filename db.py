@@ -44,5 +44,30 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS appointments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );""")
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversation_summaries (
+        id SERIAL PRIMARY KEY,
+        customer_phone TEXT UNIQUE,
+        summary TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS appointments (
+        id SERIAL PRIMARY KEY,
+        customer_phone TEXT,
+        customer_name TEXT,
+        appointment_type TEXT,
+        preferred_date TEXT,
+        preferred_time TEXT,
+        notes TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+conn.commit()
+
 
 conn.commit()
