@@ -23,6 +23,7 @@ import time
 import requests
 from db import conn, cursor
 from pathlib import Path
+from fastapi.responses import Response, JSONResponse  # add JSONResponse here
 
 
 
@@ -235,6 +236,32 @@ langgraph_app = graph.compile(checkpointer=memory)
 # ================== END OF AGENT CODE ==================
 
 app = FastAPI(title="Amani AI WhatsApp Webhook")
+
+@app.get("/conversations")
+async def get_conversations():
+    cursor.execute("SELECT * FROM conversations ORDER BY timestamp DESC")
+    rows = cursor.fetchall()
+    return JSONResponse(content=[dict(r) for r in rows])
+
+@app.get("/tickets")
+async def get_tickets():
+    cursor.execute("SELECT * FROM tickets ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    return JSONResponse(content=[dict(r) for r in rows])
+
+@app.get("/analytics")
+async def get_analytics():
+    cursor.execute("SELECT COUNT(*) as count FROM conversations")
+    total_convos = cursor.fetchone()["count"]
+    cursor.execute("SELECT COUNT(*) as count FROM tickets")
+    total_tickets = cursor.fetchone()["count"]
+    return {
+        "total_conversations": total_convos,
+        "total_tickets": total_tickets,
+        "escalation_rate": round((total_tickets / total_convos) * 100, 2) if total_convos else 0
+    }
+
+
 
 @app.get("/")
 async def health():

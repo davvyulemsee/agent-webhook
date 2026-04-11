@@ -17,6 +17,11 @@ twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
 # Initialize Twilio client
 twilio_client = Client(account_sid, auth_token)
 
+st.set_page_config(
+    page_title="Amani AI Dashboard",
+    layout="wide",   # 🔑 makes the app use full browser width
+    initial_sidebar_state="collapsed"
+)
 
 st.markdown(
     """
@@ -37,11 +42,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.set_page_config(
-    page_title="Amani AI Dashboard",
-    layout="wide",   # 🔑 makes the app use full browser width
-    initial_sidebar_state="collapsed"
-)
+
 
 
 st_autorefresh(interval=5000, key="refresh")
