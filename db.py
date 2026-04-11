@@ -31,4 +31,18 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS tickets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )""")
 
+# appointments
+cursor.execute("""CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    customer_phone TEXT,
+    customer_name TEXT,
+    appointment_type TEXT,
+    preferred_date TEXT,
+    preferred_time TEXT,
+    notes TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);""")
+
+
 conn.commit()

@@ -25,6 +25,10 @@ from db import conn, cursor
 from pathlib import Path
 from fastapi.responses import Response, JSONResponse  # add JSONResponse here
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from anthropic import Anthropic
+from datetime import datetime, timedelta
+
 
 
 from dotenv import load_dotenv
@@ -43,6 +47,78 @@ model = ChatGroq(model="openai/gpt-oss-20b", temperature=0, api_key=groq_api_key
 API_BASE = "http://localhost:8000/catalog"
 
 # get bank info ---> RAG to policies. Add later.
+
+
+
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+def summarise_inactive_conversations():
+    cutoff = datetime.utcnow() - timedelta(minutes=30)
+    cursor.execute("""
+        SELECT DISTINCT customer_phone FROM conversations
+        WHERE timestamp < %s
+        AND customer_phone NOT IN (
+            SELECT DISTINCT customer_phone FROM conversation_summaries
+            WHERE created_at > NOW() - INTERVAL '1 hour'
+        )
+    """, (cutoff,))
+    phones = [r["customer_phone"] for r in cursor.fetchall()]
+
+    for phone in phones:
+        cursor.execute("""
+            SELECT role, message FROM conversations
+            WHERE customer_phone = %s
+            ORDER BY timestamp ASC
+        """, (phone,))
+        messages = cursor.fetchall()
+        if len(messages) < 3:
+            continue
+
+        transcript = "\n".join([f"{r['role'].upper()}: {r['message']}" for r in messages])
+
+        response = anthropic_client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{
+                "role": "user",
+                "content": f"Summarise this WhatsApp conversation in 2-3 sentences. Focus on what the client wanted and what was resolved:\n\n{transcript}"
+            }]
+        )
+        summary = response.content[0].text
+
+        cursor.execute(
+            "INSERT INTO conversation_summaries (customer_phone, summary) VALUES (%s, %s) "
+            "ON CONFLICT (customer_phone) DO UPDATE SET summary = %s, created_at = NOW()",
+            (phone, summary, summary)
+        )
+        conn.commit()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(summarise_inactive_conversations, 'interval', minutes=15)
+scheduler.start()
+
+
+@tool
+def book_appointment(
+    customer_name: str = Field(..., description="Client's full name"),
+    appointment_type: str = Field(..., description="e.g. 'initial consultation', 'site visit', 'design review'"),
+    preferred_date: str = Field(..., description="Date the client prefers, e.g. 'Monday 14 April'"),
+    preferred_time: str = Field(..., description="Time preference, e.g. '10am' or 'afternoon'"),
+    notes: str = Field("", description="Any extra details the client mentioned"),
+    customer_phone: str = Field(..., description="Client's phone number")
+) -> str:
+    """Book an appointment request for an architectural consultation or site visit."""
+    cursor.execute(
+        """INSERT INTO appointments
+           (customer_phone, customer_name, appointment_type, preferred_date, preferred_time, notes)
+           VALUES (%s, %s, %s, %s, %s, %s)""",
+        (customer_phone, customer_name, appointment_type, preferred_date, preferred_time, notes)
+    )
+    conn.commit()
+    return (
+        f"Perfect, {customer_name}! I've logged your request for a {appointment_type} "
+        f"on {preferred_date} around {preferred_time}. Our team will confirm shortly via WhatsApp."
+    )
 
 @tool
 def search_products(
@@ -137,7 +213,7 @@ def check_loan_status(
 
 
 
-tools_list = [check_account_balance, report_transaction_dispute, check_loan_status, escalate_to_human, search_products]
+tools_list = [check_account_balance, report_transaction_dispute, check_loan_status, escalate_to_human, search_products, book_appointment]
 
 
 
@@ -302,8 +378,13 @@ async def whatsapp_webhook(From: str = Form(...), Body: str = Form(...)):
 
     # Normal AI flow
     try:
-        inputs = {"messages": [HumanMessage(content=Body)]}
-        output = langgraph_app.invoke(inputs, config)
+        # In the webhook, before invoking:
+        inputs = {
+            "messages": [
+                SystemMessage(content=f"The customer's phone number is {customer_phone}."),
+                HumanMessage(content=Body)
+            ]
+        }        output = langgraph_app.invoke(inputs, config)
         reply = output["messages"][-1].content if output.get("messages") else "Sorry, I couldn't process that."
     except Exception:
         reply = "Sorry, something went wrong. Please try again later."

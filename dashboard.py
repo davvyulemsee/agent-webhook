@@ -75,6 +75,13 @@ with col1:
 
 # Middle Panel: Chat History
 with col2:
+    summary_df = pd.read_sql(
+        "SELECT summary FROM conversation_summaries WHERE customer_phone = %s",
+        engine, params=(selected_client,)
+    )
+    if not summary_df.empty:
+        st.info(f"AI summary: {summary_df.iloc[0]['summary']}")
+
     st.subheader("Chat History")
     if selected_client:
         client_chats = convos[convos["customer_phone"] == selected_client]
@@ -143,6 +150,12 @@ with col2:
 # Right Panel: Analytics + Tickets
 with col3:
     st.subheader("Analytics")
+    st.write("### Pending appointments")
+    appts = pd.read_sql(
+        "SELECT customer_name, appointment_type, preferred_date, preferred_time, status "
+        "FROM appointments ORDER BY created_at DESC", engine
+    )
+    st.dataframe(appts)
     st.metric("Total Conversations", len(convos))
     st.metric("Escalations", len(tickets))
     rate = round((len(tickets) / len(convos)) * 100, 2) if len(convos) else 0
