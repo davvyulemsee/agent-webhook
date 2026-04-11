@@ -1,99 +1,88 @@
 import os
+import io
+import PyPDF2
 import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
+from sqlalchemy import text as sql_text
 from streamlit_autorefresh import st_autorefresh
 import plotly.express as px
 from datetime import datetime
-import time
 from twilio.rest import Client
-from sqlalchemy import text
 import requests
+
 st.set_page_config(
     page_title="Amani AI Dashboard",
-    layout="wide",   # 🔑 makes the app use full browser width
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Load credentials from environment variables
+# Credentials
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
 API_BASE = os.getenv("WEBHOOK_URL", "http://localhost:8000")
-st.sidebar.write(f"API: {API_BASE}")
 
-# Initialize Twilio client
+st.sidebar.write(f"API: {API_BASE}")
+st.sidebar.write(f"Twilio FROM: {twilio_number}")
+
 twilio_client = Client(account_sid, auth_token)
 
-
-
-st.markdown(
-    """
+st.markdown("""
     <style>
-    .stApp {
-        background: linear-gradient(135deg, #0A0A0A, #1A1A1A);
-    }
-    .stMetric {
-        color: #00FF00;
-    }
+    .stApp { background: linear-gradient(135deg, #0A0A0A, #1A1A1A); }
+    .stMetric { color: #00FF00; }
     .stButton>button {
         background-color: #0A0A0A;
         color: #00FF00;
         border: 1px solid #00FF00;
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
-
+""", unsafe_allow_html=True)
 
 st_autorefresh(interval=5000, key="refresh")
 
-# Get DATABASE_URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    st.error("DATABASE_URL not set. Please add it in Railway environment variables.")
+    st.error("DATABASE_URL not set.")
     st.stop()
 
-# Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL)
 
 st.title("Amani AI Admin Dashboard")
 
-
-# Conversations
 convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
 tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
 
-
-# Layout: 3 panels (25%, 50%, 25%)
 col1, col2, col3 = st.columns([1, 5, 2])
 
-# Left Panel: Clients
+# ── Left Panel: Clients ──────────────────────────────────────────
 with col1:
     st.subheader("Clients")
     clients = convos["customer_phone"].unique()
     selected_client = st.selectbox("Select client", clients)
 
-# Middle Panel: Chat History
+# ── Middle Panel: Chat ───────────────────────────────────────────
 with col2:
-    summary_df = pd.read_sql(
-        "SELECT summary FROM conversation_summaries WHERE customer_phone = %s",
-        engine, params=(selected_client,)
-    )
-    if not summary_df.empty:
-        st.info(f"AI summary: {summary_df.iloc[0]['summary']}")
+    try:
+        summary_df = pd.read_sql(
+            "SELECT summary FROM conversation_summaries WHERE customer_phone = %s",
+            engine, params=(selected_client,)
+        )
+        if not summary_df.empty:
+            st.info(f"AI summary: {summary_df.iloc[0]['summary']}")
+    except Exception:
+        pass
 
     st.subheader("Chat History")
     if selected_client:
         client_chats = convos[convos["customer_phone"] == selected_client]
         for _, row in client_chats.iterrows():
-            # Convert timestamp to HH:MM format
-            time_str = datetime.strptime(str(row["timestamp"]), "%Y-%m-%d %H:%M:%S.%f").strftime("%H:%M")
-            role = "🟢 User" if row["role"] == "user" else "🤖 AI"
-            # st.write(f"[{time_str}] {role}: {row['message']}")
+            try:
+                time_str = pd.to_datetime(row["timestamp"]).strftime("%H:%M")
+            except Exception:
+                time_str = "?"
+
             if row["role"] == "user":
                 st.markdown(
                     f"<div style='text-align:left; background:#1A1A1A; color:#FFFFFF; "
@@ -101,98 +90,108 @@ with col2:
                     f"<b>User [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
-
             elif row["role"] == "human":
                 st.markdown(
                     f"<div style='text-align:left; background:#001F3F; color:#00FFFF; "
-                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
-                    f"max-width:70%;'>"
-                    f"<b>Human [{time_str}]</b><br>{row['message']}</div>",
+                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; max-width:70%;'>"
+                    f"<b>You [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
-
             else:
                 st.markdown(
                     f"<div style='text-align:left; background:#0A0A0A; color:#FFFFFF; "
-                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; "
-                    f"max-width:70%;'>"
+                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; max-width:70%;'>"
                     f"<b>AI [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
-                # 🧑 Human-in-the-loop reply box
+
         st.write("---")
 
         col_take, col_release = st.columns(2)
         with col_take:
             if st.button("Take over", key=f"take_{selected_client}"):
-                requests.post(f"{API_BASE}/handoff/{selected_client}?active=true")
-                st.success("You are now handling this conversation.")
+                try:
+                    requests.post(f"{API_BASE}/handoff/{selected_client}?active=true")
+                    st.success("You are now handling this conversation.")
+                except Exception as e:
+                    st.error(f"Handoff failed: {e}")
         with col_release:
             if st.button("Release to AI", key=f"release_{selected_client}"):
-                requests.post(f"{API_BASE}/handoff/{selected_client}?active=false")
-                st.success("AI has resumed.")
+                try:
+                    requests.post(f"{API_BASE}/handoff/{selected_client}?active=false")
+                    st.success("AI has resumed.")
+                except Exception as e:
+                    st.error(f"Release failed: {e}")
 
         human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
         if st.button("Send", key=f"send_button_{selected_client}"):
-            # Log reply in DB
-            with engine.connect() as conn:
-                conn.execute(
-                    text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (:phone, :role, :message, NOW())"),
-                    {"phone": selected_client, "role":"human","message": human_reply}
-                )
-                conn.commit()
+            if not human_reply.strip():
+                st.warning("Message is empty.")
+            else:
+                # Log to DB
+                with engine.connect() as conn:
+                    conn.execute(
+                        sql_text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (:phone, :role, :message, NOW())"),
+                        {"phone": selected_client, "role": "human", "message": human_reply}
+                    )
+                    conn.commit()
 
-            # TODO: integrate with Twilio/WhatsApp/SMS API here
-            twilio_client.messages.create(
-                from_=twilio_number,  # your Twilio WhatsApp number
-                to=f"whatsapp:{selected_client}",  # customer's WhatsApp number
-                body=human_reply  # message text
-            )
+                # Send via Twilio — note the + before selected_client
+                to_number = f"whatsapp:+{selected_client}"
+                st.sidebar.write(f"Sending TO: {to_number}")  # debug — remove later
+                try:
+                    twilio_client.messages.create(
+                        from_=twilio_number,
+                        to=to_number,
+                        body=human_reply
+                    )
+                    st.success("Message sent.")
+                except Exception as e:
+                    st.error(f"Twilio error: {e}")
 
-            st.success("Message sent to customer.")
-
-# Right Panel: Analytics + Tickets
+# ── Right Panel: Analytics ───────────────────────────────────────
 with col3:
     st.write("### Knowledge base")
-    uploaded_file = st.file_uploader(
-        "Upload a document (PDF or TXT)",
-        type=["pdf", "txt"]
-    )
+    uploaded_file = st.file_uploader("Upload a document (PDF or TXT)", type=["pdf", "txt"])
     if uploaded_file:
         if uploaded_file.type == "application/pdf":
-            import PyPDF2, io
-
             reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-            text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+            doc_text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
         else:
-            text = uploaded_file.read().decode("utf-8")
+            doc_text = uploaded_file.read().decode("utf-8")
 
         from rag import ingest_document
-
-        n = ingest_document(uploaded_file.name, text)
+        n = ingest_document(uploaded_file.name, doc_text)
         st.success(f"Ingested {n} chunks from {uploaded_file.name}")
+
     st.subheader("Analytics")
+
     st.write("### Pending appointments")
-    appts = pd.read_sql(
-        "SELECT customer_name, appointment_type, preferred_date, preferred_time, status "
-        "FROM appointments ORDER BY created_at DESC", engine
-    )
-    st.dataframe(appts)
+    try:
+        appts = pd.read_sql(
+            "SELECT customer_name, appointment_type, preferred_date, preferred_time, status "
+            "FROM appointments ORDER BY created_at DESC", engine
+        )
+        st.dataframe(appts)
+    except Exception:
+        st.info("No appointments yet.")
+
     st.metric("Total Conversations", len(convos))
     st.metric("Escalations", len(tickets))
     rate = round((len(tickets) / len(convos)) * 100, 2) if len(convos) else 0
     st.metric("Escalation Rate (%)", rate)
 
-    # Graphs
     st.write("### Conversations per Client")
-    fig1 = px.bar(convos.groupby("customer_phone").size().reset_index(name="count"),
-                  x="customer_phone", y="count", title="Conversations per Client")
-    st.plotly_chart(fig1, width="stretch")
+    fig1 = px.bar(
+        convos.groupby("customer_phone").size().reset_index(name="count"),
+        x="customer_phone", y="count"
+    )
+    st.plotly_chart(fig1, use_container_width=True)
 
     st.write("### Ticket Status Distribution")
-    if "status" in tickets.columns:
-        fig2 = px.pie(tickets, names="status", title="Ticket Status Distribution")
-        st.plotly_chart(fig2, width="stretch")
+    if "status" in tickets.columns and len(tickets):
+        fig2 = px.pie(tickets, names="status")
+        st.plotly_chart(fig2, use_container_width=True)
 
     st.write("### Tickets")
     st.dataframe(tickets)
