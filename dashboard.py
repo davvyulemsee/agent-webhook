@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 from twilio.rest import Client
 from sqlalchemy import text
+import requests
 
 # Load credentials from environment variables
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
