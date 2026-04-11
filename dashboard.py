@@ -17,17 +17,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Credentials
+# ── Credentials ───────────────────────────────────────────────────────────────
 account_sid = os.getenv("TWILIO_ACCOUNT_SID")
 auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 twilio_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
 API_BASE = os.getenv("WEBHOOK_URL", "http://localhost:8000")
-
-st.sidebar.write(f"API: {API_BASE}")
-st.sidebar.write(f"Twilio FROM: {twilio_number}")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 twilio_client = Client(account_sid, auth_token)
 
+# ── Styling ───────────────────────────────────────────────────────────────────
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(135deg, #0A0A0A, #1A1A1A); }
@@ -42,28 +41,33 @@ st.markdown("""
 
 st_autorefresh(interval=5000, key="refresh")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     st.error("DATABASE_URL not set.")
     st.stop()
 
 engine = create_engine(DATABASE_URL)
 
-st.title("Amani AI Admin Dashboard")
+st.title("Amani AI — Dashboard")
 
+# ── Load data ─────────────────────────────────────────────────────────────────
 convos = pd.read_sql("SELECT * FROM conversations ORDER BY timestamp DESC", engine)
 tickets = pd.read_sql("SELECT * FROM tickets ORDER BY created_at DESC", engine)
 
+# ── Layout ────────────────────────────────────────────────────────────────────
 col1, col2, col3 = st.columns([1, 5, 2])
 
-# ── Left Panel: Clients ──────────────────────────────────────────
+# ── Left: Client list ─────────────────────────────────────────────────────────
 with col1:
     st.subheader("Clients")
     clients = convos["customer_phone"].unique()
+    if len(clients) == 0:
+        st.info("No conversations yet.")
+        st.stop()
     selected_client = st.selectbox("Select client", clients)
 
-# ── Middle Panel: Chat ───────────────────────────────────────────
+# ── Middle: Chat history ──────────────────────────────────────────────────────
 with col2:
+    # AI summary
     try:
         summary_df = pd.read_sql(
             "SELECT summary FROM conversation_summaries WHERE customer_phone = %s",
@@ -75,8 +79,10 @@ with col2:
         pass
 
     st.subheader("Chat History")
+
     if selected_client:
         client_chats = convos[convos["customer_phone"] == selected_client]
+
         for _, row in client_chats.iterrows():
             try:
                 time_str = pd.to_datetime(row["timestamp"]).strftime("%H:%M")
@@ -85,28 +91,29 @@ with col2:
 
             if row["role"] == "user":
                 st.markdown(
-                    f"<div style='text-align:left; background:#1A1A1A; color:#FFFFFF; "
+                    f"<div style='text-align:left; background:#1A1A1A; color:#FFFFFF;"
                     f"padding:8px; border-radius:8px; margin:5px; max-width:70%;'>"
-                    f"<b>User [{time_str}]</b><br>{row['message']}</div>",
+                    f"<b>Client [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
             elif row["role"] == "human":
                 st.markdown(
-                    f"<div style='text-align:left; background:#001F3F; color:#00FFFF; "
+                    f"<div style='text-align:right; background:#001F3F; color:#00FFFF;"
                     f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; max-width:70%;'>"
                     f"<b>You [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
             else:
                 st.markdown(
-                    f"<div style='text-align:left; background:#0A0A0A; color:#FFFFFF; "
-                    f"padding:8px; border-radius:8px; margin:5px; margin-left:auto; max-width:70%;'>"
+                    f"<div style='text-align:left; background:#0A2A0A; color:#00FF00;"
+                    f"padding:8px; border-radius:8px; margin:5px; max-width:70%;'>"
                     f"<b>AI [{time_str}]</b><br>{row['message']}</div>",
                     unsafe_allow_html=True
                 )
 
         st.write("---")
 
+        # Handoff controls
         col_take, col_release = st.columns(2)
         with col_take:
             if st.button("Take over", key=f"take_{selected_client}"):
@@ -114,84 +121,99 @@ with col2:
                     requests.post(f"{API_BASE}/handoff/{selected_client}?active=true")
                     st.success("You are now handling this conversation.")
                 except Exception as e:
-                    st.error(f"Handoff failed: {e}")
+                    st.error(f"Failed: {e}")
         with col_release:
             if st.button("Release to AI", key=f"release_{selected_client}"):
                 try:
                     requests.post(f"{API_BASE}/handoff/{selected_client}?active=false")
                     st.success("AI has resumed.")
                 except Exception as e:
-                    st.error(f"Release failed: {e}")
+                    st.error(f"Failed: {e}")
 
-        human_reply = st.text_area("Send a message to customer:", key=f"human_reply_{selected_client}")
+        # Manual reply
+        human_reply = st.text_area("Send a message to client:", key=f"human_reply_{selected_client}")
         if st.button("Send", key=f"send_button_{selected_client}"):
             if not human_reply.strip():
                 st.warning("Message is empty.")
             else:
-                # Log to DB
-                with engine.connect() as conn:
-                    conn.execute(
-                        sql_text("INSERT INTO conversations (customer_phone, role, message, timestamp) VALUES (:phone, :role, :message, NOW())"),
-                        {"phone": selected_client, "role": "human", "message": human_reply}
-                    )
-                    conn.commit()
-
-                # Send via Twilio — note the + before selected_client
-                to_number = f"whatsapp:+{selected_client}"
-                st.sidebar.write(f"Sending TO: {to_number}")  # debug — remove later
                 try:
+                    with engine.connect() as db_conn:
+                        db_conn.execute(
+                            sql_text(
+                                "INSERT INTO conversations (customer_phone, role, message, timestamp) "
+                                "VALUES (:phone, :role, :message, NOW())"
+                            ),
+                            {"phone": selected_client, "role": "human", "message": human_reply}
+                        )
+                        db_conn.commit()
+
                     twilio_client.messages.create(
                         from_=twilio_number,
-                        to=to_number,
+                        to=f"whatsapp:+{selected_client}",
                         body=human_reply
                     )
                     st.success("Message sent.")
                 except Exception as e:
-                    st.error(f"Twilio error: {e}")
+                    st.error(f"Error: {e}")
 
-# ── Right Panel: Analytics ───────────────────────────────────────
+# ── Right: Analytics + Knowledge base ────────────────────────────────────────
 with col3:
+
+    # Knowledge base uploader
     st.write("### Knowledge base")
-    uploaded_file = st.file_uploader("Upload a document (PDF or TXT)", type=["pdf", "txt"])
+    uploaded_file = st.file_uploader("Upload PDF or TXT", type=["pdf", "txt"])
     if uploaded_file:
-        if uploaded_file.type == "application/pdf":
-            reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-            doc_text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
-        else:
-            doc_text = uploaded_file.read().decode("utf-8")
+        try:
+            if uploaded_file.type == "application/pdf":
+                reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
+                doc_text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+            else:
+                doc_text = uploaded_file.read().decode("utf-8")
 
-        from rag import ingest_document
-        n = ingest_document(uploaded_file.name, doc_text)
-        st.success(f"Ingested {n} chunks from {uploaded_file.name}")
+            from rag import ingest_document
+            n = ingest_document(uploaded_file.name, doc_text)
+            st.success(f"Ingested {n} chunks from {uploaded_file.name}")
+        except Exception as e:
+            st.error(f"Upload failed: {e}")
 
+    st.write("---")
+
+    # Analytics
     st.subheader("Analytics")
-
-    st.write("### Pending appointments")
-    try:
-        appts = pd.read_sql(
-            "SELECT customer_name, appointment_type, preferred_date, preferred_time, status "
-            "FROM appointments ORDER BY created_at DESC", engine
-        )
-        st.dataframe(appts)
-    except Exception:
-        st.info("No appointments yet.")
-
     st.metric("Total Conversations", len(convos))
     st.metric("Escalations", len(tickets))
     rate = round((len(tickets) / len(convos)) * 100, 2) if len(convos) else 0
     st.metric("Escalation Rate (%)", rate)
 
-    st.write("### Conversations per Client")
+    # Appointments
+    st.write("### Pending appointments")
+    try:
+        appts = pd.read_sql(
+            "SELECT id, customer_name, appointment_type, preferred_date, preferred_time, status "
+            "FROM appointments ORDER BY created_at DESC",
+            engine
+        )
+        if appts.empty:
+            st.info("No appointments yet.")
+        else:
+            st.dataframe(appts, use_container_width=True)
+    except Exception:
+        st.info("Appointments table not ready yet.")
+
+    # Charts
+    st.write("### Messages per client")
     fig1 = px.bar(
         convos.groupby("customer_phone").size().reset_index(name="count"),
         x="customer_phone", y="count"
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-    st.write("### Ticket Status Distribution")
     if "status" in tickets.columns and len(tickets):
+        st.write("### Ticket status")
         fig2 = px.pie(tickets, names="status")
         st.plotly_chart(fig2, use_container_width=True)
 
-    st.write("### Tickets")
-    st.dataframe(tickets)
+    # Tickets table
+    st.write("### Open tickets")
+    open_tickets = tickets[tickets["status"] == "open"] if "status" in tickets.columns else tickets
+    st.dataframe(open_tickets, use_container_width=True)
